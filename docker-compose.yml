@@ -14,11 +14,11 @@ services:
     networks:
       - db-network
 
-  data-api:
+  data_api:
     build:
       context: ./data_api
       dockerfile: Dockerfile
-    container_name: data-api
+    container_name: data_api
     ports:
       - "${DATA_API_PORT}:${DATA_API_PORT}"
     env_file:
@@ -29,7 +29,7 @@ services:
     depends_on:
       - postgres
     volumes:
-      - ./data-api:/app
+      - ./data_api:/app
       - ./data:/app/data
       - ./logs:/app/logs
     networks:
@@ -37,11 +37,11 @@ services:
       - app-network
       - monitoring
 
-  ai-api:
+  ai_api:
     build:
       context: ./ai_api
       dockerfile: Dockerfile
-    container_name: ai-api
+    container_name: ai_api
     ports:
       - "${AI_API_PORT}:${AI_API_PORT}"
     env_file:
@@ -50,9 +50,9 @@ services:
       - APP_ENV=${APP_ENV:-local}
       - PYTHONPATH=/app
     depends_on:
-      - data-api
+      - data_api
     volumes:
-      - ./ai-api:/app
+      - ./ai_api:/app
       - ./mlruns:/mlruns
       - ./logs:/app/logs
     networks:
@@ -70,9 +70,9 @@ services:
     env_file:
       - .env 
     depends_on:
-      - ai-api
+      - ai_api
     environment:
-      - API_URL=${API_URL:-http://ai-api:8000}
+      - API_URL=${API_URL:-http://ai_api:8000}
     volumes:
       - ./streamlit:/app
       - ./logs:/app/logs
@@ -129,8 +129,8 @@ services:
       - "--web.console.libraries=/etc/prometheus/console_libraries"
       - "--web.console.templates=/etc/prometheus/consoles"
     depends_on:
-      - data-api
-      - ai-api
+      - data_api
+      - ai_api
       - node-exporter
     restart: unless-stopped
     networks:
