@@ -3,9 +3,13 @@ global:
   evaluation_interval: 15s
 
 scrape_configs:
-  - job_name: "data-api"
+  - job_name: "data_api"
     static_configs:
-      - targets: ["data-api:8000"]
+      - targets: ["data_api:8001"]
+
+  - job_name: "ai_api"
+    static_configs:
+      - targets: ["ai_api:8000"]
 
   - job_name: "prometheus"
     static_configs:

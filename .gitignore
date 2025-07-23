@@ -1,3 +1,5 @@
 .venv
 .env
-/data/raw
+/data/raw/*.csv
+/monitoring/grafana/data
+/monitoring/prometheus/data
