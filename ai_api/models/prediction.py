@@ -5,7 +5,7 @@ from config import MLFLOW_BACKEND_STORE_URI
 EXPERIMENT_NAME = "lgbm_plane_delay_prediction"
 
 
-def load_latest_model(model_uri):
+def load_latest_model():
     """Charge le dernier modèle MLflow."""
     mlflow.set_tracking_uri(MLFLOW_BACKEND_STORE_URI)
     runs = mlflow.search_runs(

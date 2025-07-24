@@ -1,6 +1,7 @@
 .venv
 .env
 /data/
+/logs/
 /monitoring/grafana/data
 /monitoring/prometheus/data
 /mlruns
