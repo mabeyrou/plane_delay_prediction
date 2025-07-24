@@ -3,3 +3,4 @@
 /data/raw/*.csv
 /monitoring/grafana/data
 /monitoring/prometheus/data
+/mlruns

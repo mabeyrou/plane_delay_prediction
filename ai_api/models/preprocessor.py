@@ -1,85 +1,39 @@
-# data_processing/preprocessor.py
 import pandas as pd
-import numpy as np
-from sklearn.preprocessing import StandardScaler, LabelEncoder, OneHotEncoder
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import StandardScaler, OneHotEncoder
+from sklearn.impute import SimpleImputer
 from sklearn.compose import ColumnTransformer
 from sklearn.pipeline import Pipeline
-from sklearn.impute import SimpleImputer
-from typing import Dict
 
 
-class PreprocessingService:
-    def __init__(self):
-        self.pipeline = None
-        self.target_encoder = LabelEncoder()
-        self.feature_names = None
+def create_preprocessor(num_features, cat_features):
+    """
+    Crée un ColumnTransformer pour pré-traiter les features numériques et catégorielles.
+    """
+    num_pipeline = Pipeline(
+        [("imputer", SimpleImputer(strategy="mean")), ("scaler", StandardScaler())]
+    )
 
-    def fit_transform(self, data: pd.DataFrame) -> tuple:
-        """Fit le preprocessor et transforme les données d'entraînement"""
-        X = data.drop("income", axis=1)
-        y = data["income"]
+    cat_pipeline = Pipeline(
+        [
+            ("imputer", SimpleImputer(strategy="most_frequent")),
+            ("encoder", OneHotEncoder(handle_unknown="ignore", sparse_output=False)),
+        ]
+    )
 
-        y_encoded = self.target_encoder.fit_transform(y)
+    preprocessor = ColumnTransformer(
+        [("num", num_pipeline, num_features), ("cat", cat_pipeline, cat_features)],
+        remainder="passthrough",
+    )
 
-        numeric_features = X.select_dtypes(include=[np.number]).columns.tolist()
-        categorical_features = X.select_dtypes(include=["object"]).columns.tolist()
+    return preprocessor
 
-        numeric_transformer = Pipeline(
-            steps=[
-                ("imputer", SimpleImputer(strategy="median")),
-                ("scaler", StandardScaler()),
-            ]
-        )
 
-        categorical_transformer = Pipeline(
-            steps=[
-                ("imputer", SimpleImputer(strategy="constant", fill_value="missing")),
-                ("onehot", OneHotEncoder(drop="first", sparse_output=False)),
-            ]
-        )
-
-        self.pipeline = ColumnTransformer(
-            transformers=[
-                ("num", numeric_transformer, numeric_features),
-                ("cat", categorical_transformer, categorical_features),
-            ],
-            remainder="passthrough",
-        )
-
-        X_processed = self.pipeline.fit_transform(X)
-
-        self.feature_names = self._get_feature_names()
-
-        return X_processed, y_encoded
-
-    def transform(self, data: Dict) -> np.ndarray:
-        """Transforme les données de prédiction"""
-        if self.pipeline is None:
-            raise ValueError("Preprocessor not fitted yet")
-
-        df = pd.DataFrame([data])
-
-        X_processed = self.pipeline.transform(df)
-
-        return X_processed
-
-    def inverse_transform_target(self, target_encoded: np.ndarray) -> np.ndarray:
-        """Inverse transform de la target (pour interpréter les prédictions)"""
-        if not self.fitted:
-            raise ValueError("Preprocessor not fitted yet. Call fit() first.")
-
-        return self.target_encoder.inverse_transform(target_encoded)
-
-    def _get_feature_names(self) -> list:
-        """Récupère les noms des features après preprocessing"""
-        feature_names = []
-        for name, transformer, features in self.pipeline.transformers_:
-            if name == "num":
-                feature_names.extend(features)
-            elif name == "cat":
-                if hasattr(transformer.named_steps["onehot"], "get_feature_names_out"):
-                    cat_features = transformer.named_steps[
-                        "onehot"
-                    ].get_feature_names_out(features)
-                    feature_names.extend(cat_features)
-        return feature_names
+def split_data(features, target, test_size=0.2, random_state=42):
+    """
+    Divise les données en ensembles d'entraînement et de test.
+    """
+    X_train, X_test, y_train, y_test = train_test_split(
+        features, target, test_size=test_size, random_state=random_state
+    )
+    return X_train, X_test, y_train, y_test

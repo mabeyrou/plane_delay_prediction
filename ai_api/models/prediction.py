@@ -1,61 +1,48 @@
-# services/prediction_service.py
-import mlflow
 import pandas as pd
-from typing import Dict, Any
-from datetime import datetime
-from loguru import logger
-
-from models.preprocessor import PreprocessingService
-from schemas.prediction import PredictionRequest
-from models.model_loader import ModelLoader
-# from database.metrics_client import MetricsClient
+import mlflow
+import mlflow.sklearn
 
 
-class PredictionService:
-    def __init__(self):
-        self.preprocessor = PreprocessingService()
-        self.model_loader = ModelLoader()
-        # self.metrics_client = MetricsClient()
+def load_model(model_uri):
+    """Charge un modèle MLflow."""
+    loaded_model = mlflow.sklearn.load_model(model_uri)
+    return loaded_model
 
-    async def predict(self, data: PredictionRequest) -> Dict[str, Any]:
-        try:
-            # 1. Chargement du modèle et preprocessor depuis MLflow
-            model_info = self.model_loader.load_latest_model()
-            model = model_info["model"]
-            preprocessor = model_info["preprocessor"]
 
-            # 2. Préprocessing des données (features seulement)
-            processed_data = preprocessor.transform_features(data.model_dump())
+def predict(model, data):
+    """Effectue des prédictions avec le modèle chargé."""
+    predictions = model.predict(data)
+    return predictions
 
-            # 3. Prédiction
-            prediction = model.predict(processed_data)
-            probability = model.predict_proba(processed_data)
 
-            # 4. Interpréter la prédiction
-            prediction_label = preprocessor.inverse_transform_target(prediction)
+if __name__ == "__main__":
+    # Exemple d'utilisation (à adapter avec tes données)
+    import pandas as pd
+    from preprocessing import prepare_data, create_preprocessing_pipeline
 
-            # 5. Logging de la prédiction
-            await self._log_prediction(data, prediction_label, probability)
+    # Création des données d'exemple
+    data = {
+        "num1": [1, 2, 3, 4, 5],
+        "cat1": ["A", "B", "A", "C", "B"],
+        "target": [0, 1, 0, 1, 0],
+    }
+    df = pd.DataFrame(data)
+    features = ["num1", "cat1"]
+    target = ["target"]
+    cat_features = ["cat1"]
+    num_features = ["num1"]
 
-            logger.debug(f"prediction label: {prediction_label[0]}")
+    # Préparation des données
+    X_train, X_test, y_train, y_test = prepare_data(df, features, target, cat_features)
+    preprocessor = create_preprocessing_pipeline(num_features, cat_features)
+    X_test_processed = preprocessor.transform(X_test)  # Use transform instead of fit_transform
 
-            return {
-                "prediction": prediction_label[0],  # ">=50K" ou "<50K"
-                "prediction_binary": int(prediction[0]),  # 0 ou 1
-                "probability": float(probability[0][1]),
-                "model_version": model_info["version"],
-            }
+    # Remplace avec l'URI de ton modèle MLflow
+    model_uri = "runs:/<YOUR_RUN_ID>/model"  # Remplace <YOUR_RUN_ID> par l'ID de ta run MLflow
 
-        except Exception as err:
-            raise Exception(str(err))
+    # Chargement du modèle
+    loaded_model = load_model(model_uri)
 
-    async def _log_prediction(self, input_data, prediction, probability):
-        # # Log pour monitoring et drift detection
-        # prediction_log = {
-        #     "input_data": input_data.model_dump(),
-        #     "prediction": prediction[0],
-        #     "probability": probability[0].tolist(),
-        #     "timestamp": datetime.utcnow(),
-        # }
-        # await self.metrics_client.log_prediction(prediction_log)
-        pass
+    # Prédiction
+    predictions = predict(loaded_model, X_test)
+    print("Predictions:", predictions)

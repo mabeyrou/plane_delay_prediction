@@ -1,120 +1,67 @@
+import lightgbm as lgb
+from sklearn.pipeline import Pipeline
 import mlflow
-import mlflow.sklearn
-from mlflow.models.signature import infer_signature
-from sklearn.ensemble import RandomForestClassifier
-from sklearn.linear_model import LogisticRegression
-from sklearn.model_selection import train_test_split
-from sklearn.metrics import (
-    accuracy_score,
-    precision_score,
-    recall_score,
-    f1_score,
-    roc_auc_score,
-)
-from typing import Dict, Any
-from loguru import logger
-import pandas as pd
-from os.path import join
-# from datetime import datetime
-
-from models.preprocessor import PreprocessingService
-from schemas.training_config import TrainingConfig, ModelType
+import mlflow.lightgbm
 from config import MLFLOW_BACKEND_STORE_URI
-# from database.metrics_client import MetricsClient
 
 
-class TrainingService:
-    def __init__(self):
-        mlflow.set_tracking_uri(MLFLOW_BACKEND_STORE_URI)
-        mlflow.set_experiment("Income prediction experiment")
+def create_model(
+    preprocessor,
+    learning_rate,
+    n_estimators,
+    num_leaves,
+    objective,
+    metric,
+    random_state=42,
+):
+    """Crée le modèle LightGBM avec la pipeline de preprocessing."""
+    lgbm = lgb.LGBMClassifier(
+        random_state=random_state,
+        learning_rate=learning_rate,
+        n_estimators=n_estimators,
+        num_leaves=num_leaves,
+        objective=objective,
+        metric=metric,
+    )
 
-    async def train_model(self, config: TrainingConfig) -> Dict[str, Any]:
-        with mlflow.start_run() as run:
-            try:
-                data = self._load_training_data(config.data_path)
+    full_pipeline = Pipeline([("preprocessor", preprocessor), ("classifier", lgbm)])
+    return full_pipeline
 
-                preprocessor = PreprocessingService()
-                X_processed, y = preprocessor.fit_transform(data)
 
-                X_train, X_test, y_train, y_test = train_test_split(
-                    X_processed, y, test_size=0.2, random_state=42, stratify=y
-                )
+def train_model_with_validation(
+    pipeline,
+    X_train,
+    y_train,
+    X_val,
+    y_val,
+    experiment_name="lgbm_plane_delay_prediction",
+    run_name="LightGBM Training with Validation",
+):
+    """
+    Pré-traite les données, entraîne le modèle avec un jeu de validation,
+    et enregistre tout avec MLflow autolog.
+    """
+    mlflow.set_tracking_uri(MLFLOW_BACKEND_STORE_URI)
+    mlflow.set_experiment(experiment_name)
 
-                model = self._create_model(config.model_type, config.hyperparameters)
-                model.fit(X_train, y_train)
+    preprocessor = pipeline.named_steps["preprocessor"]
+    X_train_processed = preprocessor.fit_transform(X_train)
+    X_val_processed = preprocessor.transform(X_val)
 
-                metrics = self._evaluate_model(model, X_test, y_test)
+    classifier = pipeline.named_steps["classifier"]
 
-                # Log des paramètres et métriques
-                mlflow.log_params(config.hyperparameters)
-                for k, v in metrics.items():
-                    mlflow.log_metric(k, v)
+    with mlflow.start_run(run_name=run_name) as run:
+        mlflow.lightgbm.autolog()
 
-                # Log du modèle
-                mlflow.sklearn.log_model(model, "model")
+        classifier.fit(
+            X_train_processed,
+            y_train.values.ravel(),
+            eval_set=[(X_val_processed, y_val.values.ravel())],
+            eval_metric="logloss",
+            callbacks=[lgb.early_stopping(10, verbose=False)],
+        )
 
-                # Log du préprocesseur
-                mlflow.sklearn.log_model(preprocessor, "preprocessor")
+        run_id = run.info.run_id
+        print(f"MLflow Run completed with run_id {run_id}")
 
-                # Enregistrement dans le Model Registry
-                mlflow.register_model(
-                    f"runs:/{run.info.run_id}/model",
-                    "revenue_prediction_model"
-                )
-                mlflow.register_model(
-                    f"runs:/{run.info.run_id}/preprocessor",
-                    "revenue_prediction_preprocessor"
-                )
-
-                return {
-                    "run_id": run.info.run_id,
-                    "metrics": metrics,
-                    "model_uri": f"runs:/{run.info.run_id}/model",
-                }
-
-            except Exception as err:
-                mlflow.log_param("status", "failed")
-                mlflow.log_param("error", str(err))
-                raise Exception(str(err))
-
-    def _load_training_data(self, data_path: str):
-        df = pd.read_csv(data_path)
-
-        cols_to_drop = ["created_at", "id", "was_used_for_training"]
-
-        df = df.dropna()
-        df = df.drop(columns=cols_to_drop)
-
-        return df
-
-    def _create_model(self, model_type: ModelType, hyperparameters: Dict):
-        if model_type == "random_forest":
-            return RandomForestClassifier(**hyperparameters)
-        elif model_type == "logistic_regression":
-            return LogisticRegression(**hyperparameters)
-        else:
-            raise ValueError(f"Model type {model_type} not supported")
-
-    def _evaluate_model(self, model, X_test, y_test) -> Dict[str, float]:
-        y_pred = model.predict(X_test)
-        y_pred_proba = model.predict_proba(X_test)[:, 1]
-
-        return {
-            "accuracy": accuracy_score(y_test, y_pred),
-            "precision": precision_score(y_test, y_pred),
-            "recall": recall_score(y_test, y_pred),
-            "f1_score": f1_score(y_test, y_pred),
-            "roc_auc": roc_auc_score(y_test, y_pred_proba),
-        }
-
-    async def _save_metrics_to_db(self, run_id: str, metrics: Dict[str, float]):
-        logger.info(f"run id: {run_id}")
-        logger.info(f"metrics: {metrics}")
-        # model_metrics = {
-        #     "run_id": run_id,
-        #     "metrics": metrics,
-        #     "created_at": datetime.utcnow(),
-        #     "model_status": "trained",
-        # }
-        # await self.metrics_client.save_model_metrics(model_metrics)
-        pass
+    return pipeline

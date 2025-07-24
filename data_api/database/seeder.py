@@ -198,68 +198,85 @@ class DataSeeder:
         finally:
             self.db.close()
 
-    def seed_flights(self, df: pd.DataFrame, airline_mapping, airport_mapping) -> None:
+    def seed_flights(
+        self, df: pd.DataFrame, airline_mapping, airport_mapping, batch_size=1000
+    ) -> None:
         try:
-            flights_to_insert = []
+            successful_inserts = 0
+            failed_inserts = 0
 
-            # airline_mapping = {
-            #     a.unique_carrier: a.id for a in self.db.query(Airline).all()
-            # }
-
-            # airport_mapping = {a.iata_code: a.id for a in self.db.query(Airport).all()}
-
-            for _, row in df.iterrows():
-                airline_id = airline_mapping.get(row["UNIQUE_CARRIER"])
-                origin_id = airport_mapping.get(row["ORIGIN"])
-                dest_id = airport_mapping.get(row["DEST"])
-
-                if airline_id is None or origin_id is None or dest_id is None:
-                    logger.warning(f"Relation manquante pour la ligne {row.to_dict()}")
-                    continue
-
-                flight = Flight(
-                    origin_airport_id=origin_id,
-                    dest_airport_id=dest_id,
-                    airline_id=airline_id,
-                    day_of_week=row["DAY_OF_WEEK"],
-                    day_of_month=row["DAY_OF_MONTH"],
-                    month=row["MONTH"],
-                    year=row["YEAR"],
-                    quarter=row["QUARTER"],
-                    fl_date=row["FL_DATE"],
-                    tail_num=row["TAIL_NUM"],
-                    fl_num=row["FL_NUM"],
-                    crs_dep_time=row["CRS_DEP_TIME"],
-                    dep_time=row["DEP_TIME"],
-                    dep_delay=row["DEP_DELAY"],
-                    dep_delay_new=row["DEP_DELAY_NEW"],
-                    dep_del15=row["DEP_DEL15"],
-                    dep_delay_group=row["DEP_DELAY_GROUP"],
-                    dep_time_blk=row["DEP_TIME_BLK"],
-                    taxi_out=row["TAXI_OUT"],
-                    wheels_off=row["WHEELS_OFF"],
-                    wheels_on=row["WHEELS_ON"],
-                    taxi_in=row["TAXI_IN"],
-                    crs_arr_time=row["CRS_ARR_TIME"],
-                    arr_time=row["ARR_TIME"],
-                    arr_delay=row["ARR_DELAY"],
-                    arr_delay_new=row["ARR_DELAY_NEW"],
-                    arr_delay_group=row["ARR_DELAY_GROUP"],
-                    arr_time_blk=row["ARR_TIME_BLK"],
-                )
-                flights_to_insert.append(flight)
-
-            if flights_to_insert:
-                self.db.add_all(flights_to_insert)
-                self.db.commit()
+            for i in range(0, len(df), batch_size):
+                batch = df.iloc[i : i + batch_size]
                 logger.info(
-                    f"{len(flights_to_insert)} vols insérés dans la table centrale."
+                    f"Processing batch {i // batch_size + 1}/{(len(df) // batch_size) + 1}"
                 )
 
-        except Exception as e:
+                flights_to_insert = []
+
+                for _, row in batch.iterrows():
+                    try:
+                        airline_id = airline_mapping.get(row["UNIQUE_CARRIER"])
+                        origin_id = airport_mapping.get(row["ORIGIN"])
+                        dest_id = airport_mapping.get(row["DEST"])
+
+                        if airline_id is None or origin_id is None or dest_id is None:
+                            logger.warning(
+                                f"Relation manquante pour la ligne {row.to_dict()}"
+                            )
+                            continue
+
+                        flight = Flight(
+                            origin_airport_id=origin_id,
+                            dest_airport_id=dest_id,
+                            airline_id=airline_id,
+                            day_of_week=row["DAY_OF_WEEK"],
+                            day_of_month=row["DAY_OF_MONTH"],
+                            month=row["MONTH"],
+                            year=row["YEAR"],
+                            quarter=row["QUARTER"],
+                            fl_date=row["FL_DATE"],
+                            tail_num=row["TAIL_NUM"],
+                            fl_num=row["FL_NUM"],
+                            crs_dep_time=row["CRS_DEP_TIME"],
+                            dep_time=row["DEP_TIME"],
+                            dep_delay=row["DEP_DELAY"],
+                            dep_delay_new=row["DEP_DELAY_NEW"],
+                            dep_del15=row["DEP_DEL15"],
+                            dep_delay_group=row["DEP_DELAY_GROUP"],
+                            dep_time_blk=row["DEP_TIME_BLK"],
+                            taxi_out=row["TAXI_OUT"],
+                            wheels_off=row["WHEELS_OFF"],
+                            wheels_on=row["WHEELS_ON"],
+                            taxi_in=row["TAXI_IN"],
+                            crs_arr_time=row["CRS_ARR_TIME"],
+                            arr_time=row["ARR_TIME"],
+                            arr_delay=row["ARR_DELAY"],
+                            arr_delay_new=row["ARR_DELAY_NEW"],
+                            arr_delay_group=row["ARR_DELAY_GROUP"],
+                            arr_time_blk=row["ARR_TIME_BLK"],
+                        )
+                        flights_to_insert.append(flight)
+
+                        if flights_to_insert:
+                            self.db.add_all(flights_to_insert)
+                            successful_inserts += 1
+                    except Exception as e:
+                        logger.error(f"Failed to insert row {i}: {str(e)}")
+                        failed_inserts += 1
+                        continue
+
+                self.db.commit()
+                logger.info(f"Committed batch {i // batch_size + 1}")
+
+            logger.info("Seeding completed!")
+            logger.info(f"Successful inserts: {successful_inserts}")
+            logger.info(f"Failed inserts: {failed_inserts}")
+
+        except Exception as err:
+            logger.error(f"Erreur lors du peuplement des vols: {str(err)}")
             self.db.rollback()
-            logger.error(f"Erreur lors du peuplement des vols : {e}")
             raise
+
         finally:
             self.db.close()
 
