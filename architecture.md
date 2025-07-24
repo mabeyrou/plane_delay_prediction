@@ -3,37 +3,40 @@ m7b0/                           # Racine du projet
 │ 
 ├── ai-api/                     # Répertoire de l'API de prédiction
 │   ├── models/                 # Répertoire des modules d'entrainement du modèle
-│   │   ├── evaluate.py         # Évaluer les performances du modèle entraîné
-│   │   ├── fetching_data.py    # Récupérer les données depuis l'API
-│   │   ├── model_loader.py     # Entraîner le modèle
-│   │   ├── prediction.py       # Classe de prédiction
-│   │   ├── preprocessor.py     # Script pour prétraiter/transformer les données
+│   │   ├── prediction.py       # Méthodes utilitaires pour la prédiction
+│   │   ├── preprocessor.py     # Méthodes utilitaires pour le preprocessing
 │   │   └── training.py         # Script principal pour entraîner le modèle
+│   ├── routes/                 # Répertoire des routes de l'API de prédiction
+│   │   ├── health.py           # Routes de santé de l'API
+│   │   └── model.py            # Routes relatives au modèle
+│   ├── schemas/                # Répertoire des schemas Pydantic
+│   │   └── prediction.py       # Schemas concernant la prédiction
+│   ├── scripts/                # Répertoire des scripts
+│   ├── config.py               # Fichier d'import des variables d'environnement du .env
 │   ├── main.py                 # Entrypoint de l’API REST pour servir le modèle
-│   ├── model_loader.py         # Charger le modèle entraîné pour la prédiction
 │   ├── requirements.txt        # Dépendances spécifiques à l'API FastAPI
 │   └── Dockerfile              # Image Docker pour conteneuriser l’API de prédiction
 │
 ├── data/                       # Répertoire pour gérer les données du projet
-│   ├── raw/                    # Données brutes non modifiées (CSV initiaux, etc.)
+│   ├── raw/                    # Données brutes non modifiées (CSV et parquet initiaux, etc.)
 │   └── processed/              # Données nettoyées et transformées prêtes pour l'entraînement
 │
 ├── data-api/                   # Microservice pour gérer la base de données et migrations
 │   ├── alembic/                # Répertoire pour `env.py` et `versions/` Alembic
 │   ├── crud/                   # Fonctions CRUD (Create, Read, Update, Delete)
 │   │   ├── base.py             # Classe de CRUD de base
-│   │   └── user.py             # Exemple d'instanciation de la classe CRUD de base avec les resources relatives aux user
+│   │   └── flight.py           # Exemple d'instanciation de la classe CRUD de base avec les resources relatives aux vols
 │   ├── database/               # Répertoire pour les modules relatifs à la base de données
 │   │   ├── engine.py           # Création de la session DB, moteur SQLAlchemy
 │   │   └── seeder.py           # Script permettant de seeder la base de données à partir des csv stockés dans ./data/processed
 │   ├── models/                 # Répertoire pour les modèles de données SQLAlchemy
-│   │   └── user.py             # Exemple de modèle de données sqlAlchemy pour les utilisateurs
+│   │   └── flight.py           # Exemple de modèle de données sqlAlchemy pour les vols
 │   ├── routes/                 # Répertoire pour les routes FastApi
 │   │   ├── base_router.py      # Router de base sur lequel sont construits tous les autres
 │   │   ├── health.py           # Routes de santé de l'API de données
-│   │   └── user.py             # Exemple de routes CRUD basées sur base_router.py pour les utilisateurs
+│   │   └── flight.py           # Exemple de routes CRUD basées sur base_router.py pour les vols
 │   ├── schemas/                # Répertoire pour les schémas Pydantic
-│   │   └── user.py             # Exemple de modèle de données sqlAlchemy pour les utilisateurs
+│   │   └── flight.py           # Exemple de modèle de données sqlAlchemy pour les vols
 │   ├── alembic.ini             # Fichier de configuration Alembic
 │   ├── main.py                 # Entrypoint FastAPI pour exposer l’API interne de la BDD
 │   ├── requirements.txt        # Dépendances spécifiques au service DB
