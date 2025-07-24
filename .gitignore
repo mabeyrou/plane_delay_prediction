@@ -1,6 +1,6 @@
 .venv
 .env
-/data/raw/*.csv
+/data/
 /monitoring/grafana/data
 /monitoring/prometheus/data
 /mlruns

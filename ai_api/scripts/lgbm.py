@@ -52,41 +52,6 @@ pipeline = create_model(
     preprocessor, learning_rate, n_estimators, num_leaves, objective, metric
 )
 
-trained_pipeline = train_model_with_validation(pipeline, X_train, y_train, X_val, y_val)
-
-print("\nModèle entraîné et loggué dans MLflow avec les courbes de loss.")
-
-# --- ÉTAPE FINALE : ÉVALUATION SUR LE JEU DE TEST INTENTIONNELLEMENT MIS DE CÔTÉ ---
-print("\n--- Évaluation finale sur le jeu de test ---")
-
-# 1. Faire des prédictions sur les données de test BRUTES.
-# La pipeline s'occupe du pré-traitement.
-test_predictions = trained_pipeline.predict(X_test)
-
-# 2. Calculer les métriques de performance.
-accuracy = accuracy_score(y_test, test_predictions)
-report = classification_report(y_test, test_predictions)
-
-print(f"Précision sur le jeu de test : {accuracy:.4f}")
-print("\nRapport de classification sur le jeu de test :")
-print(report)
-
-# 3. (Optionnel mais recommandé) Logguer ces métriques finales dans le même run MLflow.
-# Pour cela, il faut récupérer le run_id ou être dans le contexte du run.
-# La façon la plus simple est de le faire à l'intérieur de la fonction d'entraînement.
-
-# Voici une version modifiée de `train_model_with_validation` qui le ferait :
-# (à mettre dans training.py)
-#
-# def train_model_with_validation(...):
-#     ...
-#     with mlflow.start_run(...) as run:
-#         ...
-#         classifier.fit(...)
-#
-#         # Évaluation sur le test APRES l'entraînement
-#         test_predictions = pipeline.predict(X_test) # pipeline a le classifieur entraîné
-#         test_accuracy = accuracy_score(y_test, test_predictions)
-#         mlflow.log_metric("test_accuracy", test_accuracy)
-#
-#     return pipeline
+trained_pipeline = train_model_with_validation(
+    pipeline, X_train, y_train, X_val, y_val, X_test, y_test
+)
