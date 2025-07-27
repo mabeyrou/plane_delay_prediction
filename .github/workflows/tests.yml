@@ -23,7 +23,7 @@ jobs:
           pip install -r requirements.txt
       - name: Use .env.test as .env
         working-directory: ./data_api
-        run: cp .env.test .env
+        run: cp ../.env.test .env
       - name: Run unit tests
         working-directory: ./data_api
         run: |
@@ -47,7 +47,7 @@ jobs:
           pip install -r requirements.txt
       - name: Use .env.test as .env
         working-directory: ./ai_api
-        run: cp .env.test .env
+        run: cp ../.env.test .env
       - name: Run unit tests
         working-directory: ./ai_api
         run: |
