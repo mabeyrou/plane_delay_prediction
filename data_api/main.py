@@ -7,12 +7,9 @@ from config import APP_ENV
 from database.engine import create_db_tables
 from routes import (
     health,
-    education,
-    income,
-    marital_status,
-    occupation,
-    soc_dem_profile,
-    workclass,
+    airline,
+    airport,
+    flight,
 )
 
 
@@ -34,6 +31,9 @@ async def lifespan(app: FastAPI):
 app = FastAPI(lifespan=lifespan)
 
 app.include_router(health.router)
+app.include_router(airline.router)
+app.include_router(airport.router)
+app.include_router(flight.router)
 
 instrumentator = Instrumentator()
 instrumentator.instrument(app).expose(app)
