@@ -17,10 +17,13 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
       - name: Install dependencies
-        working-directory: ./ai_api
+        working-directory: ./data_api
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
+      - name: Use .env.test as .env
+        working-directory: ./data_api
+        run: cp .env.test .env
       - name: Run unit tests
         working-directory: ./data_api
         run: |
@@ -42,6 +45,9 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
+      - name: Use .env.test as .env
+        working-directory: ./ai_api
+        run: cp .env.test .env
       - name: Run unit tests
         working-directory: ./ai_api
         run: |
